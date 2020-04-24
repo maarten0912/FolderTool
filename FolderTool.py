@@ -45,8 +45,8 @@ def main():
 
     def insert_sql(conn, path):
         try:
-            sql = ''' INSERT OR REPLACE INTO paths (id, path)
-                          VALUES(?,?) '''
+            sql = """INSERT OR REPLACE INTO paths (id, path)
+                          VALUES(?,?)"""
             c = conn.cursor()
             c.execute(sql, path)
         except Error as e:
@@ -57,9 +57,42 @@ def main():
         conn = create_connection(dblocation)
         if conn is not None:
             c = conn.cursor()
-            c.execute("DELETE FROM paths WHERE id > 0")
+            c.execute("DELETE FROM paths WHERE id >= 0")
+            c.execute("DELETE FROM history WHERE id >= 0")
+            for btn in btnhistory:
+                btn["text"] = ""
             conn.commit()
             conn.close()
+
+    def updatehistory():
+        conn = create_connection(dblocation)
+        if conn is not None:
+            c = conn.cursor()
+            c.execute("""SELECT *
+                         FROM history
+                         ORDER BY id DESC
+                         LIMIT 10
+                         """)
+            arr = c.fetchall()
+            for i in range(len(arr)):
+                if i <= 9:
+                    btnhistory[i]["text"] = arr[i][1]
+
+            conn.commit()
+            conn.close()
+
+    def inserthistory(identifier):
+        conn = create_connection(dblocation)
+        if conn is not None:
+            c = conn.cursor()
+            try:
+                c.execute("""   INSERT INTO history (identifier)
+                                VALUES ( {} )""".format(identifier))
+            except Error as e:
+                print(e)
+            conn.commit()
+            conn.close()
+
 
     def search(id):
         conn = create_connection(dblocation)
@@ -92,11 +125,18 @@ def main():
             os.makedirs(dbpath)
         conn = create_connection(dblocation)
         sql_table = """ CREATE TABLE IF NOT EXISTS paths (
-                            id integer PRIMARY KEY,
-                            path text
-                            );"""
+                        id integer PRIMARY KEY,
+                        path text
+                        );"""
+        sql_table2 = """CREATE TABLE IF NOT EXISTS history (
+                        id integer PRIMARY KEY,
+                        identifier integer
+                        );"""
         if conn is not None:
             execute_sql(conn, sql_table)
+            execute_sql(conn, sql_table2)
+            conn.commit()
+            conn.close()
 
     def get_rows():
         conn = create_connection(dblocation)
@@ -107,6 +147,17 @@ def main():
             conn.commit()
             conn.close()
             return var
+
+    def read_table():
+        conn = create_connection(dblocation)
+        if conn is not None:
+            c = conn.cursor()
+            # c.execute("PRAGMA table_info(history);")
+            # print("Columns: " + str(c.fetchall()))
+            c.execute("SELECT * FROM history")
+            print(c.fetchall())
+            conn.commit()
+            conn.close()
 
     def scan_folder(folder):
         pb["value"] = 0
@@ -125,7 +176,7 @@ def main():
                         pb["value"] = round((progress / len(toplevel)) * 100)
                         window.update_idletasks()
                 counter += 1
-                regex = re.search("(EU|ME|US|FR|CN|EA)[0-9]{6}", root)
+                regex = re.search("(EU|ME|US|FR|CN|EA|CH)[0-9]{6}", root)
                 if regex:
                     if conn is not None:
                         insert_sql(conn, (regex.group()[2::], root))
@@ -160,7 +211,7 @@ def main():
                     files[:] = []
                     continue
                 counter += 1
-                regex = re.search("(EU|ME|US|FR|CN|EA)[0-9]{6}", root)
+                regex = re.search("(EU|ME|US|FR|CN|EA|CH)[0-9]{6}", root)
                 if regex:
                     if conn is not None:
                         insert_sql(conn, (regex.group()[2::], root))
@@ -193,8 +244,22 @@ def main():
             var = var[2:]
         try:
             os.startfile(search(var))
+            if str(btnhistory1["text"]) != str(var):
+                inserthistory(var)
+                updatehistory()
         except:
             showinfo("Error","Could not find a project with ID: {}".format(var))
+
+
+    def searchid(id):
+        var = id
+        try:
+            os.startfile(search(var))
+            if str(btnhistory1["text"]) != str(var):
+                inserthistory(var)
+                updatehistory()
+        except:
+            showinfo("Error", "Could not find a project with ID: {}".format(var))
 
     def deletebutton():
         if vdel.get() == 1:
@@ -204,6 +269,7 @@ def main():
                 pbtext2["text"] = ""
                 pb["value"] = 0
                 delete_entries()
+                updatehistory()
                 pbtext1["text"] = "Deleted all folder shortcuts!"
                 pbtext2["text"] = ""
                 pb["value"] = 100
@@ -278,48 +344,103 @@ def main():
         if len(entry_text.get()) > 8:
             entry_text.set(entry_text.get()[:8])
 
+    def history1():
+        searchid(btnhistory1["text"])
+    def history2():
+        searchid(btnhistory2["text"])
+    def history3():
+        searchid(btnhistory3["text"])
+    def history4():
+        searchid(btnhistory4["text"])
+    def history5():
+        searchid(btnhistory5["text"])
+    def history6():
+        searchid(btnhistory6["text"])
+    def history7():
+        searchid(btnhistory7["text"])
+    def history8():
+        searchid(btnhistory8["text"])
+    def history9():
+        searchid(btnhistory9["text"])
+    def history10():
+        searchid(btnhistory10["text"])
+
+    initialize()
+
+
     window = Tk()
-    window.geometry('800x300')
-    window.title("FolderTool")
+    window.geometry('800x550')
+    window.title("EAS Project Folder Finder")
 
     separator = Separator(orient=VERTICAL)
-    separator.grid(column=1,rowspan=13, sticky="ns")
+    separator.grid(column=1,rowspan=23, sticky="ns")
     separator = Separator(orient=HORIZONTAL)
     separator.grid(columnspan=10, row=1, sticky="ew")
     separator = Separator(orient=HORIZONTAL)
-    separator.grid(columnspan=10, row=5, sticky="ew")
+    separator.grid(columnspan=10, row=15, sticky="ew")
     separator = Separator(orient=HORIZONTAL)
-    separator.grid(columnspan=10, row=7, sticky="ew")
+    separator.grid(columnspan=10, row=17, sticky="ew")
+
 
     title = Label(window, text="Open project", font=("", 20))
     title.grid(column=0, row=0, sticky=W)
     title = Label(window, text="Scan", font=("", 20))
     title.grid(column=2, row=0, sticky=W)
     title = Label(window, text="Delete", font=("", 20))
-    title.grid(column=2, row=6, sticky=W)
+    title.grid(column=2, row=16, sticky=W)
     title = Label(window, text="Info", font=("", 20))
-    title.grid(column=0, row=6, sticky=W)
+    title.grid(column=0, row=16, sticky=W)
 
-    btn = Button(window, text="Open project", command=searchbutton)
-    btn.grid(column=0, row=4, sticky=E, padx=10)
+    searchbutton = Button(window, text="Open project", command=searchbutton)
+    searchbutton.grid(column=0, row=3, sticky=E, padx=10)
+    searchbutton.bind("<Return>", (lambda event: searchbutton()))
+
     btn = Button(window, text="Scan", command=scanbutton)
     btn.grid(column=2, row=4, sticky=E, padx=10)
     btn = Button(window, text="Delete", command=deletebutton)
-    btn.grid(column=2, row=12, sticky=E, padx=10)
+    btn.grid(column=2, row=22, sticky=E, padx=10)
 
     text = Label(window, text="Scan folder: ")
     text.grid(column=2, row=2, sticky=W)
     #text = Label(window, text="Exclude folder: ")
     #text.grid(column=2, row=3, sticky=W)
-    text = Label(window, text="Project ID: ")
+    text = Label(window, text="Enter Project ID: ")
     text.grid(column=0, row=2, sticky=W)
+    text = Label(window, text="Or choose a previous project: ")
+    text.grid(column=0, row=4, sticky=W)
+
+    btnhistory1 = Button(window, text="", command=history1)
+    btnhistory1.grid(column=0, row=5, sticky=E, padx=10)
+    btnhistory2 = Button(window, text="", command=history2)
+    btnhistory2.grid(column=0, row=6, sticky=E, padx=10)
+    btnhistory3 = Button(window, text="", command=history3)
+    btnhistory3.grid(column=0, row=7, sticky=E, padx=10)
+    btnhistory4 = Button(window, text="", command=history4)
+    btnhistory4.grid(column=0, row=8, sticky=E, padx=10)
+    btnhistory5 = Button(window, text="", command=history5)
+    btnhistory5.grid(column=0, row=9, sticky=E, padx=10)
+    btnhistory6 = Button(window, text="", command=history6)
+    btnhistory6.grid(column=0, row=10, sticky=E, padx=10)
+    btnhistory7 = Button(window, text="", command=history7)
+    btnhistory7.grid(column=0, row=11, sticky=E, padx=10)
+    btnhistory8 = Button(window, text="", command=history8)
+    btnhistory8.grid(column=0, row=12, sticky=E, padx=10)
+    btnhistory9 = Button(window, text="", command=history9)
+    btnhistory9.grid(column=0, row=13, sticky=E, padx=10)
+    btnhistory10 = Button(window, text="", command=history10)
+    btnhistory10.grid(column=0, row=14, sticky=E, padx=10)
+    btnhistory = [btnhistory1, btnhistory2, btnhistory3, btnhistory4, btnhistory5, btnhistory6, btnhistory7, btnhistory8, btnhistory9, btnhistory10]
+
+    updatehistory()
+
 
     vex = IntVar()
     excludebutton = Checkbutton(window, text="Exclude a folder from the scan", variable=vex, onvalue=5, offvalue=0, command=clickexclude)
     excludebutton.grid(column=2, row=3, sticky=W)
 
+
     vid = StringVar()
-    vid.set("EU123456")
+    vid.set("")
     vid.trace('w', lambda *args: character_limit(vid))
     projectid = Entry(window, width=9, textvariable=vid)
     projectid.grid(column=0,row=2, padx=10, sticky=E)
@@ -332,11 +453,11 @@ def main():
 
     vdel = IntVar()
     delall = Radiobutton(window, text="Delete all folder shortcuts", variable=vdel, value=1, command=clickall)
-    delall.grid(column=2,row=8, sticky=W)
+    delall.grid(column=2,row=18, sticky=W)
     delone = Radiobutton(window, text="Delete one folder shortcut", variable=vdel,value=2, command=clickone)
-    delone.grid(column=2,row=9, sticky=W)
+    delone.grid(column=2,row=19, sticky=W)
     delminmax = Radiobutton(window, text="Selective delete folder shortcuts", variable=vdel,value=3, command=clickminmax)
-    delminmax.grid(column=2, row=10, sticky=W)
+    delminmax.grid(column=2, row=20, sticky=W)
 
     vmin = StringVar()
     vmin.set("min")
@@ -348,24 +469,24 @@ def main():
     vmax.trace('w', lambda *args: character_limit(vmax))
     vone.trace('w', lambda *args: character_limit(vone))
     one = Entry(window, width=9, textvariable=vone, state=DISABLED)
-    one.grid(column=2, row=9, padx=10, sticky=E)
+    one.grid(column=2, row=19, padx=10, sticky=E)
     min = Entry(window, width=9, textvariable=vmin, state=DISABLED)
-    min.grid(column=2, row=10, padx=10, sticky=E)
+    min.grid(column=2, row=20, padx=10, sticky=E)
     max = Entry(window, width=9, textvariable=vmax, state=DISABLED)
-    max.grid(column=2, row=11, padx=10, sticky=E)
+    max.grid(column=2, row=21, padx=10, sticky=E)
 
     currententries = Label(window,text="Database currently has {} folder shortcuts".format(get_rows()))
-    currententries.grid(column=0,row=8,sticky=W)
+    currententries.grid(column=0,row=18,sticky=W)
 
     pbtext1 = Label(window)
-    pbtext1.grid(column=0, row=10, sticky=W)
+    pbtext1.grid(column=0, row=20, sticky=W)
     pbtext2 = Label(window)
-    pbtext2.grid(column=0, row=11, sticky=W)
+    pbtext2.grid(column=0, row=21, sticky=W)
     pb = Progressbar(window, orient=HORIZONTAL, length=200, mode="determinate", maximum=100)
-    pb.grid(column=0, row=12)
+    pb.grid(column=0, row=22)
 
-    maartentext = Label(window, text="Made by Maarten Meijer")
-    maartentext.grid(column=0,columnspan=3, row=13)
+    maartentext = Label(window, text="© Maarten Meijer, 2020")
+    maartentext.grid(column=0,columnspan=3, row=23)
 
     window.grid_rowconfigure(0, weight=1)
     window.grid_rowconfigure(2, weight=1)
@@ -378,10 +499,22 @@ def main():
     window.grid_rowconfigure(11, weight=1)
     window.grid_rowconfigure(12, weight=1)
     window.grid_rowconfigure(13, weight=1)
+    window.grid_rowconfigure(14, weight=1)
+    window.grid_rowconfigure(15, weight=1)
+    window.grid_rowconfigure(16, weight=1)
+    window.grid_rowconfigure(17, weight=1)
+    window.grid_rowconfigure(18, weight=1)
+    window.grid_rowconfigure(19, weight=1)
+    window.grid_rowconfigure(20, weight=1)
+    window.grid_rowconfigure(21, weight=1)
+    window.grid_rowconfigure(22, weight=1)
+    window.grid_rowconfigure(23, weight=1)
+
     window.grid_columnconfigure(0, weight=1)
     window.grid_columnconfigure(2, weight=1)
 
-    #window.wm_iconbitmap('MyIcon.ico')
+
+    window.wm_iconbitmap('MyIcon.ico')
     window.resizable(False,False)
     window.mainloop()
 
